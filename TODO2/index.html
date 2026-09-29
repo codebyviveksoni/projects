@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta name="description" content="Workspace Flow - Task Management, Pomodoro Focus Timer and Breathing Sanctuary" />
+
+    <meta name="theme-color" content="#4f46e5" />
+
+    <title>Workspace Flow — Focus Dashboard</title>
+
+    <!-- =====================================================
+         🎨 TAILWIND CSS
+
+         Hinglish:
+         Current Tailwind browser Play CDN use kar rahe hain.
+         Original code mein jsdelivr.net diya gaya tha,
+         jo Tailwind CSS loader nahi tha.
+         ===================================================== -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- =====================================================
+         🎨 CUSTOM CSS
+
+         Hinglish:
+         Tailwind ke saath kuch custom animations aur
+         scrollbar styling yahan rakhi gayi hai.
+         ===================================================== -->
+
+    <style>
+        /* =====================================================
+           🌬️ BREATHING ANIMATIONS
+           ===================================================== */
+
+        @keyframes breathing-inhale {
+            0% {
+                transform: scale(0.85);
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.15);
+            }
+
+            100% {
+                transform: scale(1.18);
+                box-shadow: 0 0 35px 12px rgba(99, 102, 241, 0.22);
+            }
+        }
+
+        @keyframes breathing-hold {
+
+            0%,
+            100% {
+                transform: scale(1.18);
+                box-shadow: 0 0 35px 12px rgba(245, 158, 11, 0.2);
+            }
+        }
+
+        @keyframes breathing-exhale {
+            0% {
+                transform: scale(1.18);
+                box-shadow: 0 0 35px 12px rgba(244, 63, 94, 0.2);
+            }
+
+            100% {
+                transform: scale(0.85);
+                box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.1);
+            }
+        }
+
+        .breathing-inhale {
+            animation: breathing-inhale 4s ease-in-out infinite alternate;
+        }
+
+        .breathing-hold {
+            animation: breathing-hold 4s ease-in-out infinite;
+        }
+
+        .breathing-exhale {
+            animation: breathing-exhale 4s ease-in-out infinite alternate;
+        }
+
+        /* =====================================================
+           📋 TASK SCROLLBAR
+           ===================================================== */
+
+        #todo-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #todo-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #todo-list::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.35);
+            border-radius: 999px;
+        }
+
+        #todo-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.55);
+        }
+
+        /* =====================================================
+           ✨ CARD ENTRY ANIMATION
+           ===================================================== */
+
+        @keyframes task-enter {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .task-enter {
+            animation: task-enter 0.25s ease-out;
+        }
+
+        /* =====================================================
+           🔵 TIMER PULSE
+           ===================================================== */
+
+        @keyframes timer-pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .timer-running {
+            animation: timer-pulse 2s ease-in-out infinite;
+        }
+
+        /* =====================================================
+           🧊 GLASS EFFECT
+           ===================================================== */
+
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+
+            backdrop-filter: blur(14px);
+
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        /* =====================================================
+           🔔 TOAST ANIMATION
+           ===================================================== */
+
+        @keyframes toast-in {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        .toast-visible {
+            animation: toast-in 0.25s ease-out;
+        }
+
+        /* =====================================================
+           ♿ FOCUS ACCESSIBILITY
+           ===================================================== */
+
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+            outline: 2px solid #818cf8;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+
+<body id="app-body" class="min-h-screen flex items-center justify-center p-3 sm:p-5 md:p-8 antialiased bg-cover bg-center bg-fixed transition-all duration-700 ease-in-out selection:bg-indigo-400 selection:text-white">
+    <!-- =====================================================
+         🔔 TOAST NOTIFICATION
+
+         Hinglish:
+         Add, delete, complete, timer finish etc. ki
+         small notification yahan show hogi.
+         ===================================================== -->
+
+    <div id="toast" role="status" aria-live="polite" class="fixed z-[100] left-1/2 bottom-5 hidden max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-2xl"></div>
+
+    <!-- =====================================================
+         🏠 MAIN WORKSPACE CARD
+         ===================================================== -->
+
+    <main id="workspace-card" class="w-full max-w-md md:max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl transition-all duration-500">
+    <!-- 🌄 HEADER -->
+
+        <header id="header-banner" class="relative min-h-[145px] bg-cover bg-center px-6 py-8 text-white transition-all duration-500">
+            <div class="relative z-10">
+                <div class="mx-auto mb-2 flex w-fit items-center gap-2 rounded-full border border-white/20 bg-black/15 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 text-fuchsia-600"></span>
+
+                    <P class="text-cyan-400">Personal Todo app</P>
+                </div>
+
+                <h1 id="header-title" class="text-center text-2xl font-black tracking-tight drop-shadow-md sm:text-3xl text-emerald-500">
+                    Workspace flow
+                </h1>
+
+                <p id="header-subtitle" class="mt-1 text-center text-xs font-bold uppercase tracking-widest text-indigo-100">
+                    Deadlines & Focus Dashboard
+                </p>
+            </div>
+        </header>
+
+        <!-- =================================================
+             📦 CONTENT
+             ================================================= -->
+
+        <div class="p-4 sm:p-6">
+            <!-- =================================================
+                 📝 TASK VIEW
+                 ================================================= -->
+
+            <section id="tasks-view" class="space-y-5 transition-all duration-300">
+                <!-- =============================================
+                     ➕ TASK FORM
+                     ============================================= -->
+
+                <form id="todo-form" class="space-y-3" autocomplete="off">
+                    <div class="space-y-2">
+                        <label for="todo-input" class="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                            New Focus Task
+                        </label>
+
+                        <input id="todo-input" type="text" maxlength="180" required placeholder="What is your next focal point?" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10" />
+
+                        <!-- =====================================
+                             📅 DEADLINE
+                             ===================================== -->
+
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <label for="todo-deadline" class="text-[11px] font-black uppercase tracking-widest text-slate-400 sm:w-20">
+                                Deadline
+                            </label>
+
+                            <input id="todo-deadline" type="datetime-local" class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 transition-all focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10" />
+                        </div>
+                    </div>
+
+                    <!-- =========================================
+                         🎛️ FORM BUTTONS
+                         ========================================= -->
+
+                    <div class="flex gap-2">
+                        <button id="form-btn" type="submit" class="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-black text-white shadow-lg shadow-indigo-600/10 transition-all hover:bg-indigo-700 active:scale-[0.98]">
+                            Add Task
+                        </button>
+
+                        <button id="cancel-btn" type="button" class="hidden rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-black text-rose-600 transition-all hover:bg-rose-100">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+
+                <!-- =============================================
+                     📊 ANALYTICS
+                     ============================================= -->
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Total Tasks
+                        </p>
+
+                        <p id="task-count" class="mt-1 text-lg font-black text-slate-800">
+                            TASKS (0)
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                            Completed
+                        </p>
+
+                        <p id="complete-count" class="mt-1 text-lg font-black text-emerald-700">
+                            COMPLETED : 0
+                        </p>
+                    </div>
+                </div>
+
+                <!-- =============================================
+                     📋 TASK LIST
+                     ============================================= -->
+
+                <ul id="todo-list" class="flex max-h-[310px] flex-col gap-2.5 overflow-y-auto pr-1"></ul>
+
+                <!-- =============================================
+                     💤 EMPTY STATE
+                     ============================================= -->
+
+                <div id="empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-10 text-center">
+                    <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-xl">
+                        ✨
+                    </div>
+
+                    <p class="text-sm font-black text-slate-600">
+                        Your workspace is clear.
+                    </p>
+
+                    <p class="mt-1 text-xs text-slate-400">
+                        Add your first focus task above.
+                    </p>
+                </div>
+
+                <!-- =============================================
+                     🧹 TASK MANAGEMENT
+                     ============================================= -->
+
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <button id="clear-completed-btn" type="button" class="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-black text-slate-500 transition-all hover:bg-slate-50">
+                        Clear Completed
+                    </button>
+
+                    <button id="clear-all-btn" type="button" class="flex-1 rounded-xl border border-rose-100 bg-rose-50 py-2.5 text-xs font-black text-rose-600 transition-all hover:bg-rose-100">
+                        Clear All
+                    </button>
+                </div>
+
+                <!-- =============================================
+                     ⏱️ POMODORO LAUNCH
+                     ============================================= -->
+
+                <button id="switch-to-pomodoro" type="button" class="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-black tracking-wide text-white shadow-lg shadow-indigo-600/20 transition-all hover:from-indigo-700 hover:to-violet-700 active:scale-[0.98]">
+                    ⏱️ Launch Immersive Focus Hub
+                </button>
+            </section>
+
+            <!-- =================================================
+                 ⏱️ POMODORO VIEW
+                 ================================================= -->
+
+            <section id="pomodoro-view" class="hidden space-y-5 transition-all duration-500">
+                <!-- =============================================
+                     🎨 MOOD SELECTOR
+                     ============================================= -->
+
+                <div class="space-y-3">
+                    <div class="text-center">
+                        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                            Ambient Environment
+                        </p>
+
+                        <p class="mt-1 text-xs text-slate-500">
+                            Select the environment for your focus session.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        <button type="button" data-mode="work" class="mode-tab">
+                            💼 Work
+                        </button>
+
+                        <button type="button" data-mode="rain" class="mode-tab">
+                            🌧️ Rainy
+                        </button>
+
+                        <button type="button" data-mode="lofi" class="mode-tab">
+                            ☕ Lo-Fi
+                        </button>
+
+                        <button type="button" data-mode="happy" class="mode-tab">
+                            ☀️ Happy
+                        </button>
+
+                        <button type="button" data-mode="zen" class="mode-tab col-span-2 sm:col-span-1">
+                            🧘 Zen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- =============================================
+                     🕐 TIMER CARD
+                     ============================================= -->
+
+                <div id="timer-card" class="rounded-3xl border border-slate-800 bg-slate-950 p-6 text-center text-white shadow-2xl">
+                    <div class="mb-5 flex items-center justify-between">
+                        <span id="pomo-status" class="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-400">
+                            Ready To Focus
+                        </span>
+
+                        <span id="session-counter" class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold text-slate-400">
+                            Session 1
+                        </span>
+                    </div>
+
+                    <!-- =========================================
+                         ⏱️ TIMER CLOCK
+                         ========================================= -->
+
+                    <div id="clock-wrapper" class="flex flex-col items-center justify-center">
+                        <div id="pomo-timer-display" class="timer-display text-6xl font-black tracking-tighter text-white sm:text-7xl">
+                            25:00
+                        </div>
+
+                        <p class="mt-2 text-xs font-medium text-slate-500">
+                            Stay present. One minute at a time.
+                        </p>
+                    </div>
+
+                    <!-- =========================================
+                         🌬️ BREATHING VIEW
+                         ========================================= -->
+
+                    <div id="breathing-wrapper" class="hidden min-h-[190px] flex-col items-center justify-center">
+                        <div id="breathing-node" class="flex h-28 w-28 items-center justify-center rounded-full border-4 border-indigo-500 bg-indigo-500/20">
+                            <span class="text-xs font-black uppercase tracking-widest text-white">
+                                Breathe
+                            </span>
+                        </div>
+
+                        <p id="breathing-action-txt" class="mt-5 text-sm font-black uppercase tracking-[0.2em] text-indigo-300">
+                            Inhale
+                        </p>
+                    </div>
+
+                    <!-- =========================================
+                         🎛️ TIMER CONTROLS
+                         ========================================= -->
+
+                    <div class="mt-6 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="pomo-start-btn" type="button" class="rounded-xl bg-indigo-500 py-3 text-sm font-black text-white transition-all hover:bg-indigo-400 active:scale-[0.98]">
+                                Start Session
+                            </button>
+
+                            <button id="pomo-reset-btn" type="button" class="rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-black text-slate-300 transition-all hover:bg-white/10">
+                                Reset
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="toggle-breathing-mode" type="button" class="rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-bold text-slate-300 transition-all hover:bg-white/10">
+                                Switch Breathing
+                            </button>
+
+                            <button id="sound-toggle-btn" type="button" class="rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-bold text-slate-300 transition-all hover:bg-white/10">
+                                🔊 Sound On
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =============================================
+                     ⚙️ TIMER SETTINGS
+                     ============================================= -->
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Focus Duration
+                            </p>
+
+                            <p class="mt-1 text-[11px] text-slate-400">
+                                Choose your session length.
+                            </p>
+                        </div>
+
+                        <select id="pomo-duration-select" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10">
+                            <option value="15">15 Minutes</option>
+                            <option value="25">25 Minutes</option>
+                            <option value="45" selected>45 Minutes</option>
+                            <!-- <option value="45">45 Minutes</option> -->
+                            <option value="60">60 Minutes</option>
+                            <option value="120">120 Minutes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- =============================================
+                     📈 FOCUS PROGRESS
+                     ============================================= -->
+
+                <div class="rounded-2xl border border-slate-100 bg-white p-4">
+                    <div class="mb-2 flex items-center justify-between">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Current Session
+                        </span>
+
+                        <span id="pomo-progress-text" class="text-xs font-black text-indigo-600">
+                            0%
+                        </span>
+                    </div>
+
+                    <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div id="pomo-progress-bar" class="h-full w-0 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <!-- =============================================
+                     🚪 EXIT BUTTON
+                     ============================================= -->
+
+                <button id="exit-pomodoro" type="button" class="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-black text-slate-600 transition-all hover:bg-slate-50">
+                    ← Back To Workspace
+                </button>
+            </section>
+        </div>
+    </main>
+
+    <!-- =====================================================
+         🚀 APPLICATION JAVASCRIPT
+         ===================================================== -->
+
+    <script src="index.js"></script>
+</body>
+
+</html>
